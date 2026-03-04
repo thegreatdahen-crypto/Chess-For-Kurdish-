@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>شەترەنجی پڕۆفیشناڵی کوردی</title>
+    
+    <!-- هێنانی دیزاینی بۆردەکە بە ئۆنلاین -->
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    
+    <style>
+        body {
+            background-color: #1a1a2e;
+            color: #ffffff;
+            font-family: 'Tahoma', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 10px;
+            touch-action: manipulation; /* ڕێگریکردن لە زووم بوونی شاشەی مۆبایل */
+        }
+        h2 { margin-bottom: 10px; color: #e94560; text-align: center; font-size: 22px; }
+        
+        /* دیزاینی بەشی هەڵبژاردنی ئاستەکان */
+        .controls {
+            width: 100%; max-width: 400px; display: flex;
+            justify-content: space-between; align-items: center;
+            margin-bottom: 15px; background-color: #16213e;
+            padding: 12px; border-radius: 8px; box-sizing: border-box;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .controls label { font-weight: bold; color: #4CAF50; font-size: 15px;}
+        select {
+            background-color: #0f3460; color: white; border: 1px solid #e94560;
+            padding: 6px; border-radius: 5px; font-family: inherit; font-size: 14px;
+            outline: none; cursor: pointer;
+        }
+
+        /* بۆکسی شیکردنەوە (Analysis) */
+        #kurdish-analysis {
+            background-color: #16213e; padding: 15px; width: 100%;
+            max-width: 400px; border-radius: 10px; margin-bottom: 15px;
+            text-align: center; font-size: 16px; line-height: 1.6;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3); min-height: 75px;
+            display: flex; align-items: center; justify-content: center;
+            box-sizing: border-box; border-bottom: 5px solid #81b64c;
+            transition: border-color 0.4s ease; /* ئەنیمەیشنی گۆڕینی ڕەنگ */
+        }
+
+        #myBoard {
+            width: 100%; max-width: 400px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-radius: 5px;
+        }
+
+        /* دوگمەی ڕیستارت */
+        .btn {
+            background-color: #e94560; color: white; border: none;
+            padding: 14px 20px; margin-top: 20px; font-size: 16px;
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+            width: 100%; max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: background 0.2s;
+        }
+        .btn:active { background-color: #c81d3f; transform: translateY(2px); }
+    </style>
+</head>
+<body>
+
+    <h2>شەترەنجی پڕۆفیشناڵی کوردی ♞</h2>
+
+    <!-- هەڵبژاردنی ئاستی بۆتەکە -->
+    <div class="controls">
+        <label for="difficulty">ئاستی ڕکابەر:</label>
+        <select id="difficulty">
+            <option value="1">١: سەرەتایی (هەڕەمەکی)</option>
+            <option value="2" selected>٢: مامناوەند (هێرشبەر)</option>
+            <option value="3">٣: قورس (زیرەک)</option>
+        </select>
+    </div>
+
+    <!-- شاشەی شیکردنەوەی جووڵەکان -->
+    <div id="kurdish-analysis">بەخێربێیت! یەکەم جووڵەی خۆت بکە بۆ ئەوەی شیکردنەوەت بۆ بکەم. ♟️</div>
+
+    <!-- بۆردی شەترەنجەکە -->
+    <div id="myBoard"></div>
+
+    <button class="btn" onclick="restartGame()">یارییەکی نوێ (Restart) 🔄</button>
+
+    <!-- کتێبخانەکانی جاڤاسکریپت بۆ شەترەنج -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+
+    <script>
+        var board = null;
+        var game = new Chess();
+        var analysisBox = document.getElementById('kurdish-analysis');
+
+        // خاڵبەندی پارچەکان بۆ هەڵسەنگاندن
+        var pieceValues = { 'p': 10, 'n': 30, 'b': 30, 'r': 50, 'q': 90, 'k': 900 };
+
+        // فەنکشنی قسەکردن بە دەنگ
+        function speakKurdish(text) {
+            if ('speechSynthesis' in window) {
+                var utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ar-IQ'; 
+                utterance.rate = 0.95;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // فەنکشنی پیشاندانی نوسین و گۆڕینی ڕەنگ و خوێندنەوە
+        function provideFeedback(htmlText, spokenText, color) {
+            analysisBox.innerHTML = htmlText;
+            analysisBox.style.borderBottomColor = color;
+            speakKurdish(spokenText);
+        }
+
+        // ژماردنی خاڵەکانی سەر بۆردەکە
+        function evaluateBoardScore() {
+            var total = 0;
+            var b = game.board();
+            for (var i = 0; i < 8; i++) {
+                for (var j = 0; j < 8; j++) {
+                    if (b[i][j]) {
+                        var val = pieceValues[b[i][j].type];
+                        total += b[i][j].color === 'w' ? val : -val;
+                    }
+                }
+            }
+            return total;
+        }
+
+        // سیستەمی شیکردنەوەی جووڵەکان (Analysis Engine)
+        function analyzePlayerMove(move, scoreBefore) {
+            var newScore = evaluateBoardScore();
+            var scoreDiff = newScore - scoreBefore; 
+
+            if (game.in_checkmate()) {
+                return provideFeedback("🏆 <b>کاش و مات!</b><br> یارییەکەت بردەوە، ئافەرین.", "کاش و مات، یارییەکەت بردەوە.", "#FFD700");
+            } else if (game.in_check()) {
+                return provideFeedback("⚠️ <b>کێش (Check)!</b><br> پاشای بەرامبەرت خستە مەترسییەوە.", "کێش، پاشای بەرامبەرت خستە مەترسییەوە.", "#f3ae16");
+            }
+
+            // پۆلێنکردنی جووڵەکان هاوشێوەی Chess.com
+            if (scoreDiff <= -30) {
+                provideFeedback("❌ <b style='color:#ca3431'>هەڵەی گەورە (Blunder ??):</b><br> پارچەیەکی گرنگت خستە مەترسییەوە یان لەدەستت دا!", "هەڵەی گەورە، پارچەیەکت لەدەستدا.", "#ca3431");
+            } 
+            else if (scoreDiff < -10 && scoreDiff > -30) {
+                provideFeedback("❓ <b style='color:#e58f2a'>هەڵە (Mistake ?):</b><br> جووڵەیەکی لاواز بوو، پێگەی خۆتت خراپ کرد.", "هەڵە، جووڵەیەکی لاواز بوو.", "#e58f2a");
+            } 
+            else if (scoreDiff < 0 && scoreDiff >= -10) {
+                provideFeedback("⁉️ <b style='color:#f3ae16'>نادروست (Inaccuracy ?!):</b><br> دەکرا جووڵەیەکی باشتر هەڵبژێریت.", "جووڵەیەکی نادروست بوو.", "#f3ae16");
+            } 
+            else if (scoreDiff >= 0 && scoreDiff < 15) {
+                provideFeedback("✔️ <b style='color:#81b64c'>جووڵەی باش (Good):</b><br> جووڵەیەکی سەلامەت و پارێزراوە.", "جووڵەی باش.", "#81b64c");
+            } 
+            else if (scoreDiff >= 15 && scoreDiff < 40) {
+                provideFeedback("🌟 <b style='color:#96bc4b'>باشترین جووڵە (Best Move ★):</b><br> یارییەکی زۆر ستراتیژی دەکەیت.", "باشترین جووڵە.", "#96bc4b");
+            } 
+            else if (scoreDiff >= 40 && scoreDiff < 70) {
+                provideFeedback("‼️ <b style='color:#5c8bb0'>جووڵەی نایاب (Great Move !):</b><br> قازانجێکی زۆر گەورەت کرد بێ قوربانیدان!", "جووڵەی نایاب، قازانجێکی گەورەت کرد.", "#5c8bb0");
+            } 
+            else if (scoreDiff >= 70) {
+                provideFeedback("💎 <b style='color:#1baca6'>بلیمەتانە (Brilliant !!):</b><br> شاکارە! جووڵەیەکی بلیمەتانە و هێرشێکی کوشندە.", "جووڵەیەکی بلیمەتانە! ئافەرین.", "#1baca6");
+            }
+        }
+
+        // لۆجیکی بۆتەکە (Bot Engine)
+        function makeBotMove() {
+            var possibleMoves = game.moves({ verbose: true });
+            if (possibleMoves.length === 0) return;
+
+            var level = document.getElementById('difficulty').value;
+            var bestMove = null;
+
+            if (level === "1") {
+                // ئاستی ١: هەڕەمەکی
+                bestMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+            } else if (level === "2") {
+                // ئاستی ٢: هەوڵدەدات پارچە بخوات
+                bestMove = possibleMoves[0];
+                var highestValue = -1;
+                for (var i = 0; i < possibleMoves.length; i++) {
+                    if (possibleMoves[i].captured) {
+                        var val = pieceValues[possibleMoves[i].captured];
+                        if (val > highestValue) { highestValue = val; bestMove = possibleMoves[i]; }
+                    }
+                }
+                if(highestValue === -1) bestMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+            } else if (level === "3") {
+                // ئاستی ٣: پێشبینی دەکات (Minimax)
+                var bestValue = 9999; 
+                for (var i = 0; i < possibleMoves.length; i++) {
+                    game.move(possibleMoves[i].san);
+                    var boardValue = evaluateBoardScore();
+                    game.undo();
+                    if (boardValue < bestValue) {
+                        bestValue = boardValue;
+                        bestMove = possibleMoves[i];
+                    }
+                }
+                if (!bestMove) bestMove = possibleMoves[0];
+            }
+
+            // بۆتەکە جووڵەکە دەکات
+            game.move(bestMove.san);
+            board.position(game.fen());
+
+            // پشکنینی دوای جووڵەی بۆتەکە
+            if (game.in_checkmate()) {
+                provideFeedback("💀 <b style='color:#ca3431'>دۆڕایت!</b><br> بۆتەکە کاش و ماتی کردیت.", "دۆڕایت، بۆتەکە کاش و ماتی کردیت.", "#ca3431");
+            } else if (game.in_check()) {
+                provideFeedback("⚠️ <b style='color:#e58f2a'>ئاگاداربە!</b><br> بۆتەکە کێشی لێ کردیت.", "ئاگاداربە! بۆتەکە کێشی لێ کردیت.", "#e58f2a");
+            } else if (game.in_draw()) {
+                provideFeedback("🤝 <b>یەکسان بوون (Draw)!</b>", "یارییەکە بە یەکسان بوون کۆتایی هات.", "#888888");
+            }
+        }
+
+        // ڕێگریکردن لە جووڵەی نادروست یان جووڵەی ڕەش
+        function onDragStart(source, piece, position, orientation) {
+            if (game.game_over() || piece.search(/^b/) !== -1) return false;
+        }
+
+        // کاتێک یاریزان پارچەیەک دادەنێت
+        function onDrop(source, target) {
+            var scoreBefore = evaluateBoardScore();
+
+            var move = game.move({
+                from: source,
+                to: target,
+                promotion: 'q' // ئۆتۆماتیکی دەبێت بە وەزیر
+            });
+
+            if (move === null) return 'snapback'; // ئەگەر جووڵەکە یاسایی نەبوو بیگەڕێنەوە
+
+            analyzePlayerMove(move, scoreBefore);
+            
+            // کاتی بیرکردنەوەی بۆتەکە
+            window.setTimeout(makeBotMove, 600);
+        }
+
+        // نوێکردنەوەی بۆردەکە
+        function onSnapEnd() {
+            board.position(game.fen());
+        }
+
+        // ڕێکخستنەکانی بۆردەکە
+        var config = {
+            draggable: true,
+            position: 'start',
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            onSnapEnd: onSnapEnd,
+            pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+        };
+        board = Chessboard('myBoard', config);
+
+        // ڕیستارت کردنی یارییەکە
+        function restartGame() {
+            game.reset();
+            board.start();
+            provideFeedback("یارییەکی نوێ دەستی پێکرد. بەختێکی باش! ♟️", "یارییەکی نوێ دەستی پێکرد.", "#81b64c");
+        }
+
+        // گونجاندنی قەبارە لەگەڵ شاشە
+        $(window).resize(board.resize);
+    </script>
+</body>
+</html>
